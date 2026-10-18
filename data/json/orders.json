@@ -1,0 +1,77 @@
+[
+
+{
+  "_id": {
+    "$oid": "772738ba5b1241c78abc7e17"
+  },
+  "restaurant": {
+    "id": {
+      "$oid": "ef8c42c14b7518a4aebec107"
+    }
+  },
+  "order_date": {
+    "$date": {
+      "$numberLong": "1713780422100"
+    }
+  },
+  "client": {
+    "id": {
+      "$oid": "727a81ce4a8cd1420741e25e"
+    }
+  },
+  "ordered_dish": [
+    {
+      "id": {
+        "$oid": "770244ac855a44c5287cb2ac"
+      },
+      "name": "Масала",
+      "price": 550,
+      "quantity": 2
+    },
+    {
+      "id": {
+        "$oid": "080d4248a4773012342b117a"
+      },
+      "name": "Карри",
+      "price": 744,
+      "quantity": 2
+    },
+    {
+      "id": {
+        "$oid": "7b27444b845e2740c8774b47"
+      },
+      "name": "Чай",
+      "price": 444,
+      "quantity": 4
+    }
+  ],
+  "payed_by_bonuses": 780,
+  "cost": 8051,
+  "payment": 8051,
+  "bonus_for_visit": 374,
+  "statuses": [
+    {
+      "status": "CLOSED",
+      "time": "2024-04-22 10:15:22"
+    },
+    {
+      "status": "DELIVERING",
+      "time": "2024-04-22 04:22:14"
+    },
+    {
+      "status": "COOKING",
+      "time": "2024-04-22 04:11:20"
+    },
+    {
+      "status": "OPEN",
+      "order_date": "2024-04-22 08:28:33"
+    }
+  ],
+  "final_status": "CLOSED",
+  "update_time": {
+    "$date": {
+      "$numberLong": "1713780422100"
+    }
+  }
+}
+]

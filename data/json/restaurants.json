@@ -1,0 +1,40 @@
+{
+  "_id": {
+    "$oid": "n857785vnh4n458nrf"
+  },
+  "name": "Булочная №13",
+  "phone": "5444485",
+  "email": "bun@mail.ru",
+  "founding_day": "30.04.2014",
+  "menu": [
+    {
+      "_id": {
+        "$oid": "7276e8cd0cf48b4cded0087c"
+      },
+      "name": "ОВОЩИ ПО-МЕКСИКАНСКИ",
+      "price": 60,
+      "dish_category": "Закуски"
+    },
+    {
+      "_id": {
+        "$oid": "7276e8cd0cf48b4cded0087d"
+      },
+      "name": "КУРИЦА",
+      "price": 60,
+      "dish_category": "Закуски"
+    },
+    {
+      "_id": {
+        "$oid": "7276e8cd0cf48b4cded0087e"
+      },
+      "name": "РОЛЛ",
+      "price": 120,
+      "dish_category": "Закуски"
+    }
+  ],
+  "update_time": {
+    "$date": {
+      "$numberLong": "1716544812000"
+    }
+  }
+}

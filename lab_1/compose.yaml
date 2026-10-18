@@ -1,0 +1,144 @@
+# Отдельное имя проекта изолирует контейнеры и тома лабораторной.
+name: abd-dwh-lab
+
+# Общие настройки трёх сервисов, использующих один образ Airflow.
+x-airflow: &airflow
+  build: .
+  image: abd-dwh-lab-airflow:2.11.0
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    AIRFLOW__CORE__PARALLELISM: "4"
+    AIRFLOW__WEBSERVER__WORKERS: "1"
+    AIRFLOW__WEBSERVER__SECRET_KEY: local-lab-webserver-key
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    DWH_DSN: postgresql://dwh:dwh@dwh/dwh
+    SOURCE_PG_DSN: postgresql://source:source@source-pg/source
+    SOURCE_MONGO_URI: mongodb://source-mongo:27017
+    SOURCE_MONGO_DB: restaurant_source
+    STG_BATCH_LIMIT: "2"
+    PYTHONPATH: /opt/airflow/dags
+  # Код подключён для разработки; данные источников и журналы имеют отдельные пути.
+  volumes:
+    - ./dags:/opt/airflow/dags:ro
+    - ./sql:/opt/airflow/sql:ro
+    - ./scripts:/opt/airflow/scripts:ro
+    - ./tests:/opt/airflow/tests:ro
+    - ../data:/opt/airflow/source-data:ro
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    airflow-db:
+      condition: service_healthy
+    dwh:
+      condition: service_healthy
+    source-pg:
+      condition: service_healthy
+    source-mongo:
+      condition: service_healthy
+
+services:
+  # Внутренняя служебная база Airflow хранит расписание и состояние задач.
+  airflow-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U airflow"]
+      interval: 5s
+      retries: 20
+
+  # PostgreSQL хранилища: данные STG, общий журнал и позиции загрузки.
+  dwh:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: dwh
+      POSTGRES_PASSWORD: dwh
+      POSTGRES_DB: dwh
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - dwh:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U dwh"]
+      interval: 5s
+      retries: 20
+
+  # PostgreSQL источника: обычные таблицы и внешние таблицы над CSV.
+  source-pg:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: source
+      POSTGRES_PASSWORD: source
+      POSTGRES_DB: source
+    ports:
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - source-pg:/var/lib/postgresql/data
+      - ./fixtures:/data/external:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U source"]
+      interval: 5s
+      retries: 20
+
+  # Третий источник содержит коллекции клиентов, ресторанов и заказов.
+  source-mongo:
+    image: mongo:7
+    volumes:
+      - source-mongo:/data/db
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --eval, "db.adminCommand('ping').ok"]
+      interval: 5s
+      retries: 30
+
+  # Однократная инициализация должна успешно завершиться до старта Airflow.
+  setup:
+    <<: *airflow
+    entrypoint: /bin/bash
+    command:
+      - -ec
+      - |
+        airflow db migrate
+        python /opt/airflow/scripts/setup.py
+    restart: "no"
+
+  # Веб-интерфейс доступен локально на порту 18080.
+  airflow-webserver:
+    <<: *airflow
+    command: webserver
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, curl, --fail, http://localhost:8080/health]
+      interval: 10s
+      retries: 20
+      start_period: 30s
+
+  # Планировщик запускает задачи по расписанию и отслеживает их завершение.
+  airflow-scheduler:
+    <<: *airflow
+    command: scheduler
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, curl, --fail, http://localhost:8974/health]
+      interval: 10s
+      retries: 20
+      start_period: 30s
+
+# Именованные тома сохраняют данные при пересоздании контейнеров.
+volumes:
+  airflow-db:
+  dwh:
+  source-pg:
+  source-mongo:
+  airflow-logs:

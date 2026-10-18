@@ -1,0 +1,4 @@
+Id,uniq_id,date_time,action_id,customer_id,quantity
+1,activity-event-1,2024-04-01T11:00:00+00:00,view,1,1
+2,activity-event-2,2024-04-01T11:05:00+00:00,cart,1,1
+3,activity-event-3,2024-04-03T14:00:00+00:00,view,2,2

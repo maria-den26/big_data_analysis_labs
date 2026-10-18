@@ -1,0 +1,3 @@
+id,uniq_id,date_time,city_id,city_name,customer_id,first_name,last_name,item_id,item_name,quantity,payment_amount
+1,order-event-1,2024-04-01T12:00:00+00:00,78,Санкт-Петербург,1,Иван,Покупатель,1,Чашка,1,1000.00
+2,order-event-2,2024-04-03T15:00:00+00:00,77,Москва,2,Ольга,Покупатель,2,Брошь,2,6000.00

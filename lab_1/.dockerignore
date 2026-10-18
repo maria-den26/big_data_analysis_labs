@@ -1,0 +1,6 @@
+__pycache__
+*.pyc
+.runtime
+.idea/
+.git/
+.env

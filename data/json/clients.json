@@ -1,0 +1,32 @@
+[{
+  "_id": {
+    "$oid": "727a81ce9a8cd1920741e258"
+  },
+  "name": "Иванова Инна Ивановна",
+  "phone": "5824585",
+  "birthday": "30.04.2014",
+  "email": "iii@mail.ru",
+  "login": "iii",
+  "address": "Московский пр. 12",
+  "update_time": {
+    "$date": {
+      "$numberLong": "1716544813000"
+    }
+  }
+},{
+  "_id": {
+    "$oid": "726a81ce9a8cd1920741e259"
+  },
+  "name": "Екатрина Романовна Дашкова",
+  "phone": "5824587",
+  "birthday": "01.01.1991",
+  "email": "erd@mail.ru",
+  "login": "kati17",
+  "address": "Дворцовая набережная 38",
+  "update_time": {
+    "$date": {
+      "$numberLong": "1716544813000"
+    }
+  }
+}
+]
