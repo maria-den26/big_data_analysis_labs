@@ -133,9 +133,9 @@ class IncrementalTests(unittest.TestCase):
 
     def test_01_fresh_start_structure_and_values(self):
         """Проверяет создание с нуля, состав источников и точность переноса значений."""
-        self.assertEqual(pipeline(), (20, 4))
-        self.assertEqual(sum(count(t) for t in etl.DATA_TABLES), 24)
-        self.assertEqual(count('logs'), 24)
+        self.assertEqual(pipeline(), (36, 4))
+        self.assertEqual(sum(count(t) for t in etl.DATA_TABLES), 40)
+        self.assertEqual(count('logs'), 40)
         self.assertEqual(count('settings'), 12)
         with etl.connect('SOURCE_PG_DSN') as source, etl.connect() as dest:
             self.assertEqual({r[0] for r in dest.execute("SELECT tablename FROM pg_tables WHERE schemaname='stg'")},
