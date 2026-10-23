@@ -10,144 +10,118 @@ WITH monthly_stats AS (
         DATE_TRUNC('month', f.order_created_at)::DATE AS report_period,
 
         -- Сумма завершённых заказов
-        COALESCE(
-                SUM(f.product_price) FILTER (
-            WHERE f.order_status = 'done'
-            ), 0
-        ) AS customer_money,
+        SUM(COALESCE(f.product_price, 0)) FILTER (WHERE f.order_status = 'done') AS customer_money,
 
         -- Комиссия платформы — 10%
-        COALESCE(
-                SUM(f.product_price) FILTER (
-            WHERE f.order_status = 'done'
-            ), 0
-        ) * 0.10 AS platform_money,
+        SUM(COALESCE(f.product_price, 0)) FILTER (WHERE f.order_status = 'done' ) * 0.10 AS platform_money,
 
         COUNT(*) AS count_order,
         ROUND(AVG(f.product_price), 2) AS avg_price_order,
 
         -- Медианное время выполнения в днях
         PERCENTILE_CONT(0.5) WITHIN GROUP (
-    ORDER BY
-    EXTRACT(EPOCH FROM (
-    f.order_completed_at - f.order_created_at
-    )) / 86400.0
-    ) FILTER (
-    WHERE f.order_status = 'done'
-    AND f.order_completed_at IS NOT NULL
-    ) AS median_time_order,
+        ORDER BY
+        EXTRACT(EPOCH FROM (f.order_completed_at - f.order_created_at)) / 86400.0)
+        FILTER (WHERE f.order_status = 'done' AND f.order_completed_at IS NOT NULL
+        ) AS median_time_order,
 
-                                        -- Количество заказов по статусам
-    COUNT(*) FILTER (
-    WHERE f.order_status = 'created'
-    ) AS count_order_created,
+        -- Количество заказов по статусам
+        COUNT(*) FILTER (
+        WHERE f.order_status = 'created'
+        ) AS count_order_created,
 
-    COUNT(*) FILTER (
-    WHERE f.order_status = 'in_progress'
-    ) AS count_order_in_progress,
+        COUNT(*) FILTER (
+        WHERE f.order_status = 'in_progress'
+        ) AS count_order_in_progress,
 
-    COUNT(*) FILTER (
-    WHERE f.order_status = 'delivery'
-    ) AS count_order_delivery,
+        COUNT(*) FILTER (
+        WHERE f.order_status = 'delivery'
+        ) AS count_order_delivery,
 
-    COUNT(*) FILTER (
-    WHERE f.order_status = 'done'
-    ) AS count_order_done,
+        COUNT(*) FILTER (
+        WHERE f.order_status = 'done'
+        ) AS count_order_done,
 
-    COUNT(*) FILTER (
-    WHERE f.order_status IN ('created', 'in_progress', 'delivery')
-    ) AS count_order_not_done
+        COUNT(*) FILTER (
+        WHERE f.order_status IN ('created', 'in_progress', 'delivery')
+        ) AS count_order_not_done
 
-FROM dds.fact_orders f
-
+    FROM dds.fact_orders f
     JOIN dds.dim_customers c
-ON f.customer_key = c.customer_key
+        ON f.customer_key = c.customer_key
 
-GROUP BY
-    c.customer_id,
-    c.customer_name,
-    c.customer_address,
-    c.customer_birthday,
-    c.customer_email,
-    DATE_TRUNC('month', f.order_created_at)::DATE
-    ),
-
+    GROUP BY
+        c.customer_id,
+        c.customer_name,
+        c.customer_address,
+        c.customer_birthday,
+        c.customer_email,
+        DATE_TRUNC('month', f.order_created_at)::DATE
+),
     category_counts AS (
--- Считаем заказы каждой категории
-SELECT
-    c.customer_id,
-    DATE_TRUNC('month', f.order_created_at)::DATE AS report_period,
-    p.product_type,
-    COUNT(*) AS order_count
+    -- Считаем заказы каждой категории
+    SELECT
+        c.customer_id,
+        DATE_TRUNC('month', f.order_created_at)::DATE AS report_period,
+        p.product_type,
+        COUNT(*) AS order_count
 
-FROM dds.fact_orders f
+    FROM dds.fact_orders f
     JOIN dds.dim_customers c
-ON f.customer_key = c.customer_key
+        ON f.customer_key = c.customer_key
     JOIN dds.dim_products p
-    ON f.product_key = p.product_key
+        ON f.product_key = p.product_key
 
-GROUP BY
-    c.customer_id,
-    DATE_TRUNC('month', f.order_created_at)::DATE,
-    p.product_type
-    ),
-
+    GROUP BY
+        c.customer_id,
+        DATE_TRUNC('month', f.order_created_at)::DATE,
+        p.product_type
+),
     top_categories AS (
--- Выбираем наиболее популярную категорию
-SELECT
-    customer_id,
-    report_period,
-    product_type
-FROM (
+    -- Выбираем наиболее популярную категорию
     SELECT
-    *,
-    ROW_NUMBER() OVER (
-    PARTITION BY customer_id, report_period
-    ORDER BY order_count DESC, product_type
-    ) AS rn
-    FROM category_counts
-    ) ranked
-WHERE rn = 1
-    ),
-
+        customer_id,
+        report_period,
+        product_type
+    FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY customer_id, report_period ORDER BY order_count DESC, product_type) AS rn
+        FROM category_counts
+        ) ranked
+    WHERE rn = 1
+),
     craftsman_counts AS (
--- Считаем заказы у каждого мастера
-SELECT
-    c.customer_id,
-    DATE_TRUNC('month', f.order_created_at)::DATE AS report_period,
-    cr.craftsman_id,
-    COUNT(*) AS order_count
-
-FROM dds.fact_orders f
-    JOIN dds.dim_customers c
-ON f.customer_key = c.customer_key
-    JOIN dds.dim_craftsmans cr
-    ON f.craftsman_key = cr.craftsman_key
-
-GROUP BY
-    c.customer_id,
-    DATE_TRUNC('month', f.order_created_at)::DATE,
-    cr.craftsman_id
-    ),
-
-    top_craftsmans AS (
--- Выбираем наиболее популярного мастера
-SELECT
-    customer_id,
-    report_period,
-    craftsman_id
-FROM (
+    -- Считаем заказы у каждого мастера
     SELECT
-    *,
-    ROW_NUMBER() OVER (
-    PARTITION BY customer_id, report_period
-    ORDER BY order_count DESC, craftsman_id
-    ) AS rn
-    FROM craftsman_counts
-    ) ranked
-WHERE rn = 1
-    )
+        c.customer_id,
+        DATE_TRUNC('month', f.order_created_at)::DATE AS report_period,
+        cr.craftsman_id,
+        COUNT(*) AS order_count
 
+    FROM dds.fact_orders f
+    JOIN dds.dim_customers c
+        ON f.customer_key = c.customer_key
+    JOIN dds.dim_craftsmans cr
+        ON f.craftsman_key = cr.craftsman_key
+
+    GROUP BY
+        c.customer_id,
+        DATE_TRUNC('month', f.order_created_at)::DATE,
+        cr.craftsman_id
+),
+    top_craftsmans AS (
+    -- Выбираем наиболее популярного мастера
+    SELECT
+        customer_id,
+        report_period,
+        craftsman_id
+    FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY customer_id, report_period ORDER BY order_count DESC, craftsman_id ) AS rn
+        FROM craftsman_counts
+        ) ranked
+    WHERE rn = 1
+)
 -- Записываем рассчитанные показатели в CDM
 INSERT INTO cdm.customer_report (
     customer_id,
@@ -195,18 +169,15 @@ SELECT
     EXTRACT(MONTH FROM m.report_period)::INTEGER
 
 FROM monthly_stats m
-
-         LEFT JOIN top_categories tc
-                   ON m.customer_id = tc.customer_id
-                       AND m.report_period = tc.report_period
-
-         LEFT JOIN top_craftsmans tcr
-                   ON m.customer_id = tcr.customer_id
-                       AND m.report_period = tcr.report_period
+LEFT JOIN top_categories tc
+    ON m.customer_id = tc.customer_id
+    AND m.report_period = tc.report_period
+LEFT JOIN top_craftsmans tcr
+    ON m.customer_id = tcr.customer_id
+    AND m.report_period = tcr.report_period
 
 -- При повторной загрузке обновляем существующие строки
-    ON CONFLICT (customer_id, report_period)
-DO UPDATE SET
+ON CONFLICT (customer_id, report_period) DO UPDATE SET
     customer_name = EXCLUDED.customer_name,
            customer_address = EXCLUDED.customer_address,
            customer_birthday = EXCLUDED.customer_birthday,
