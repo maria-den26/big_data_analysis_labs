@@ -41,6 +41,10 @@ def initialize_databases():
         conn.execute('CREATE SCHEMA IF NOT EXISTS cdm')
         execute_file(conn, 'stg_source.sql')
         execute_file(conn, 'stg.sql')
+        execute_file(conn, 'dds.sql')
+        execute_file(conn, 'cdm.sql')
+
+
     with MongoClient(os.environ['SOURCE_MONGO_URI'], serverSelectionTimeoutMS=10000) as client:
         db = mongo_database(client)
         with connect('SOURCE_PG_DSN') as conn:

@@ -4,7 +4,7 @@ from datetime import timedelta
 import pendulum
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
-
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 import dwh_lib as etl
 
 
@@ -26,8 +26,16 @@ def lab_dwh():
     pg = run_stage.override(task_id='postgres_to_stg')('load_pg')
     mongo = run_stage.override(task_id='mongo_to_stg')('load_mongo')
     quality = run_stage.override(task_id='validate_stg')('validate_stg')
+    #запуск stg→dds
+    trigger_dds=TriggerDagRunOperator(
+        task_id='trigger_dds',
+        trigger_dag_id='lab_dds',
+        wait_for_completion=True,#покажет, загрузился ли dds
+        poke_interval=10
+    )
     # Проверка начинается только после успешного завершения обеих загрузок.
-    [pg, mongo] >> quality
+    #stg→dds только после проверки quality
+    [pg, mongo] >> quality >> trigger_dds
 
 
 lab_dwh()
